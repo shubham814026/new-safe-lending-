@@ -12,7 +12,7 @@ import pandas as pd
 # ── CONSTANTS ──────────────────────────────────────────────
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "lending_model", "data")
-NROWS = None  # None = full data; set to 200_000 for fast dev
+NROWS = int(os.environ.get("NROWS", "200000"))  # 200k rows for fast dev & instant response
 
 DEFAULT_STATUSES = [
     "Charged Off",

@@ -3,6 +3,8 @@ ML Processor — trains the Random Forest from the notebook and
 produces all prediction-page data.  Runs once, caches results.
 """
 
+import os
+import pickle
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
@@ -14,11 +16,37 @@ from sklearn.metrics import roc_auc_score, roc_curve, classification_report, con
 from data.lending_loader import get_closed, get_analysis, APPLICATION_FEATURES
 
 _ml_cache: dict = {}
+MODEL_CACHE_FILE = os.path.join(os.path.dirname(__file__), "model_cache.pkl")
+
+
+def _load_cache_from_disk():
+    global _ml_cache
+    if os.path.exists(MODEL_CACHE_FILE):
+        try:
+            with open(MODEL_CACHE_FILE, "rb") as f:
+                _ml_cache = pickle.load(f)
+            print(f"[ml_processor] Loaded pre-trained model cache from disk.")
+            return True
+        except Exception as e:
+            print(f"[ml_processor] Failed to load cached model: {e}")
+    return False
+
+
+def _save_cache_to_disk():
+    try:
+        with open(MODEL_CACHE_FILE, "wb") as f:
+            pickle.dump(_ml_cache, f)
+        print(f"[ml_processor] Saved model cache to disk: {MODEL_CACHE_FILE}")
+    except Exception as e:
+        print(f"[ml_processor] Failed to save model cache: {e}")
 
 
 def _train_model():
-    """Train the RF once and cache everything."""
+    """Train the RF once and cache everything to memory & disk."""
     if "trained" in _ml_cache:
+        return
+
+    if _load_cache_from_disk() and "trained" in _ml_cache:
         return
 
     print("[ml_processor] Training Random Forest …")
@@ -93,6 +121,7 @@ def _train_model():
         "y_test": y_test,
     })
     print(f"[ml_processor] ✅ AUC = {auc:.4f}")
+    _save_cache_to_disk()
 
 
 # ─────────────────────────────────────────────
@@ -103,6 +132,8 @@ def _train_temporal():
     if "decay_results" in _ml_cache:
         return
     _train_model()
+    if "decay_results" in _ml_cache:
+        return
 
     print("[ml_processor] Running temporal decay analysis …")
     da = get_analysis()
@@ -162,6 +193,7 @@ def _train_temporal():
 
     _ml_cache["decay_results"] = results
     print(f"[ml_processor] ✅ Temporal decay: {len(results)} years")
+    _save_cache_to_disk()
 
 
 # ═══════════════════════════════════════════════

@@ -8,13 +8,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers import analytics, prediction
 
 
+import threading
+
+
+def _background_warmup():
+    try:
+        from data.lending_loader import preload
+        preload()
+        from data.ml_processor import _train_temporal
+        _train_temporal()
+    except Exception as e:
+        print(f"[FastAPI] Warmup notice: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: preload all CSV data into memory
-    from data.lending_loader import preload
-    preload()
+    print("[FastAPI] Backend server starting up on http://127.0.0.1:8001 ...")
+    threading.Thread(target=_background_warmup, daemon=True).start()
     yield
-    # Shutdown: nothing to clean up
+    print("[FastAPI] Backend server shutting down.")
 
 
 app = FastAPI(

@@ -304,8 +304,8 @@ def compute_drift_score() -> dict:
     rate_g = drift[drift["grade"] == "G"].set_index("issue_year")["default_rate_pct"]
 
     spread = (
-        drift.groupby("issue_year")
-        .apply(lambda x: x["default_rate_pct"].max() - x["default_rate_pct"].min())
+        drift.groupby("issue_year")["default_rate_pct"]
+        .apply(lambda x: x.max() - x.min())
         .reset_index()
     )
     spread.columns = ["year", "grade_spread"]
